@@ -179,10 +179,6 @@
     display:flex; align-items:center; gap:5px; font-family:inherit;}
   .btn-primary{background:var(--indigo-2); color:#fff;}
   .btn-done{background:var(--green); color:#fff;}
-  .resultado-btns{display:flex; gap:8px;}
-  .btn-resultado{flex:1; padding:12px 10px; border-radius:10px; font-size:14.5px; font-weight:700; border:2px solid var(--line); background:#fff; color:var(--ink); display:flex; align-items:center; justify-content:center; gap:6px;}
-  .btn-resultado.sel-procedente{background:var(--green); border-color:var(--green); color:#fff;}
-  .btn-resultado.sel-improcedente{background:var(--red); border-color:var(--red); color:#fff;}
   .btn-ghost{background:var(--gray-l); color:#565A72;}
   .btn-danger{background:var(--red-l); color:var(--red);}
   .btn:active{opacity:.8; transform:scale(.98);}
@@ -883,16 +879,13 @@ window.addEventListener('error', function(e){
             </label>
           </div>` : ''}
           <div class="field"><label>Mover para</label>
-            <select data-field="status" data-id="${t.id}">
-              ${STAGES.map(s=>`<option value="${s.key}" ${s.key===t.status?'selected':''}>${s.label}</option>`).join('')}
+            <select data-field="status-resultado" data-id="${t.id}">
+              ${STAGES.filter(s=>s.key!=='concluido').map(s=>`<option value="${s.key}" ${s.key===t.status?'selected':''}>${s.label}</option>`).join('')}
+              <option value="concluido" ${(t.status==='concluido' && !t.resultado)?'selected':''}>⚠ Concluído — sem resultado</option>
+              <option value="concluido_procedente" ${(t.status==='concluido' && t.resultado==='procedente')?'selected':''}>✅ Concluído — Procedente</option>
+              <option value="concluido_improcedente" ${(t.status==='concluido' && t.resultado==='improcedente')?'selected':''}>❌ Concluído — Improcedente</option>
             </select>
           </div>
-          ${t.status==='concluido' ? `<div class="field"><label>Resultado</label>
-            <div class="resultado-btns">
-              <button type="button" class="btn-resultado ${t.resultado==='procedente'?'sel-procedente':''}" data-action="resultado" data-value="procedente" data-id="${t.id}">✅ Procedente</button>
-              <button type="button" class="btn-resultado ${t.resultado==='improcedente'?'sel-improcedente':''}" data-action="resultado" data-value="improcedente" data-id="${t.id}">❌ Improcedente</button>
-            </div>
-          </div>` : ''}
           <div class="card-actions">
             ${t.status!=='concluido'?`<button class="btn btn-done" data-action="concluir" data-id="${t.id}">✓ Concluir</button>`:''}
             <button class="btn btn-danger" data-action="excluir" data-id="${t.id}">Excluir</button>
@@ -958,12 +951,6 @@ window.addEventListener('error', function(e){
       if(actionBtn.dataset.action==='excluir'){
         openConfirmSheet('Excluir chamado', 'Tem certeza que quer excluir este chamado do quadro? Essa ação não pode ser desfeita.', '🗑 Excluir', ()=>deleteTicket(id));
       }
-      if(actionBtn.dataset.action==='resultado'){
-        const valor = actionBtn.dataset.value;
-        const t = tickets.find(x=>x.id===id);
-        const novoValor = (t && t.resultado===valor) ? '' : valor; // toca de novo no mesmo = desmarca
-        updateTicket(id, {resultado: novoValor});
-      }
       return;
     }
 
@@ -989,14 +976,19 @@ window.addEventListener('error', function(e){
       }
       return;
     }
-    if(field==='status'){
-      if(f.value==='concluido'){
-        // mantém o card aberto e já muda pra aba Concluído, pra dar pra definir o resultado na hora
+    if(field==='status-resultado'){
+      let novoStatus, novoResultado;
+      if(f.value==='concluido'){ novoStatus='concluido'; novoResultado=''; }
+      else if(f.value==='concluido_procedente'){ novoStatus='concluido'; novoResultado='procedente'; }
+      else if(f.value==='concluido_improcedente'){ novoStatus='concluido'; novoResultado='improcedente'; }
+      else { novoStatus=f.value; novoResultado=''; }
+
+      if(novoStatus==='concluido'){
         activeTab = 'concluido'; activeResultado = 'todos'; modoGeral=false; modoPorGrupo=false; modoAtencao=false;
       } else {
         openCardId = null;
       }
-      updateTicket(id, {status:f.value});
+      updateTicket(id, {status:novoStatus, resultado:novoResultado});
     }
     else updateTicket(id, {[field]: f.value});
   });
